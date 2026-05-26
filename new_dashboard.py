@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
@@ -40,42 +39,13 @@ h1, h2, h3 {
 # TITLE
 # =====================================================
 
-st.title("🏫 National Achievement Test Analysis")
+st.title("🏫 Clustered School Data Visualization")
 
 # =====================================================
 # LOAD DATA
 # =====================================================
 
-@st.cache_data
-def load_data(uploaded_file=None):
-    data_path = Path(__file__).resolve().parent / "nat_2023-24_selected.csv"
-
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-    elif data_path.exists():
-        df = pd.read_csv(data_path)
-    else:
-        raise FileNotFoundError(
-            f"Default dataset not found at {data_path}. Please upload a CSV file or add the file to the app folder."
-        )
-
-    return df
-
-
-st.sidebar.header("Upload Dataset")
-
-uploaded_file = st.sidebar.file_uploader(
-    "Upload CSV File",
-    type=["csv"]
-)
-
-try:
-    df = load_data(uploaded_file)
-
-except Exception as e:
-
-    st.error(f"Error loading CSV: {e}")
-    st.stop()
+df = pd.read_csv("nat_2023-24_selected.csv")
 
 # =====================================================
 # DATA PREPARATION
@@ -94,30 +64,6 @@ clean_df = df.copy()
 clean_df = clean_df.dropna(
     subset=subject_columns
 )
-
-# =====================================================
-# SIDEBAR
-# =====================================================
-
-st.sidebar.header("Clustering Controls")
-
-k = st.sidebar.slider(
-    "Select Number of Clusters (K)",
-    min_value=3,
-    max_value=6,
-    value=4
-)
-
-region_filter = st.sidebar.selectbox(
-    "Filter by Region",
-    ["All Regions"] + sorted(clean_df["region"].unique().tolist())
-)
-
-if region_filter != "All Regions":
-
-    clean_df = clean_df[
-        clean_df["region"] == region_filter
-    ]
 
 # =====================================================
 # OVERALL MPS
@@ -144,7 +90,7 @@ X_scaled = scaler.fit_transform(X)
 # =====================================================
 
 kmeans = KMeans(
-    n_clusters=k,
+    n_clusters=4,
     random_state=42,
     n_init=10
 )
@@ -207,7 +153,7 @@ def generate_cluster_label(row):
 # CLUSTER VISUALIZATION
 # =====================================================
 
-st.header("Cluster Visualization")
+st.header("Visualization")
 
 fig, ax = plt.subplots(figsize=(12, 7))
 
