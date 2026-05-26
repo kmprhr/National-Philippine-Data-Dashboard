@@ -1,6 +1,7 @@
 # CMSC 178 DATA ANALYTICS CAPSTONE PROJECT
 
-** Description
+**Description**
+
 A Dashboard
 
 # Developers
