@@ -447,7 +447,7 @@ st.divider()
 # =====================================================
 # =====================================================
 
-st.header("🔵 Part 2: Clustering Analysis")
+st.header("🔵 Part 2: Subject Cluster Analysis")
 
 # =====================================================
 # CLUSTER VISUALIZATION
