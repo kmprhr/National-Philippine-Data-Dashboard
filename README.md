@@ -2,7 +2,7 @@
 
 **Description**
 
-A Dashboard
+TRESE: A National Achievement Test for Grade 6 from Different Schools Comparative Analysis Dashboard
 
 # Developers
 
