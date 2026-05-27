@@ -455,6 +455,10 @@ st.header("🔵 Part 2: Clustering Analysis")
 
 st.subheader("Cluster Scatter Plot")
 
+st.caption(
+    "Research Question: Can we identify distinct student/school types? Which at-risk patterns emerge?"
+)
+
 fig, ax = plt.subplots(figsize=(12, 7))
 
 colors = {
