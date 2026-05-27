@@ -1,6 +1,6 @@
 # CMSC 178 DATA ANALYTICS CAPSTONE PROJECT
 
-**Description**
+**📌 Description**
 
 TRESE: A National Achievement Test Performance Analysis Dashboard for Grade 6 from Different Schools.
 
@@ -8,7 +8,7 @@ A data analytics project that examines Grade 6 National Achievement Test (NAT) r
 
 The goal is to provide data-driven insights that can support educational planning and targeted interventions.
 
-**Features**
+**📊 Features**
 
 Cluster distribution of schools
 
@@ -17,6 +17,12 @@ Subject performance comparison per cluster
 Regional breakdown of performance patterns
 
 School-level data exploration
+
+**🛠️ Tools Used**
+
+Python Streamlit
+
+Excel 
 
 # Developers
 
