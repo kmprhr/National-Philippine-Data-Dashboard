@@ -877,39 +877,7 @@ with col_roc:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-col_coef, col_prob_dist = st.columns(2)
-
-with col_coef:
-    coef_df = pd.DataFrame({
-        "Subject": subject_labels,
-        "Coefficient": log_reg.coef_[0]
-    }).sort_values("Coefficient", key=abs)
-
-    bar_colors_coef = ["#ff4466" if c > 0 else "#00e5a0" for c in coef_df["Coefficient"]]
-
-    fig_coef_top = go.Figure(go.Bar(
-        x=coef_df["Coefficient"],
-        y=coef_df["Subject"],
-        orientation="h",
-        marker=dict(color=bar_colors_coef, line=dict(width=0)),
-        text=[f"  {c:.3f}" for c in coef_df["Coefficient"]],
-        textposition="outside",
-        textfont=dict(size=11, color="#8899bb")
-    ))
-    fig_coef_top.update_layout(
-        title=dict(
-            text="Subject Influence Impact Weight (Negative = Protective Factor)",
-            font=dict(size=13, color="#c8d8f0", family=FONT_FAM)
-        ),
-        height=340,
-        paper_bgcolor=PAPER_BG,
-        plot_bgcolor=PLOT_BG,
-        font=dict(family=FONT_FAM, color=TEXT_CLR),
-        margin=dict(l=20, r=60, t=50, b=20),
-        xaxis=dict(title="Logistic Regression Coefficients", gridcolor=GRID_CLR, color=TEXT_CLR),
-        yaxis=dict(showgrid=False, color=TEXT_CLR)
-    )
-    st.plotly_chart(fig_coef_top, use_container_width=True)
+col_prob_dist = st.container()
 
 with col_prob_dist:
     fig_prob = go.Figure()
