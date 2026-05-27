@@ -8,6 +8,16 @@ A data analytics project that examines Grade 6 National Achievement Test (NAT) r
 
 The goal is to provide data-driven insights that can support educational planning and targeted interventions.
 
+**Features**
+
+Cluster distribution of schools
+
+Subject performance comparison per cluster
+
+Regional breakdown of performance patterns
+
+School-level data exploration
+
 # Developers
 
 Kassy Mondido
