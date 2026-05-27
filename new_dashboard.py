@@ -1,71 +1,172 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-
+import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-
-# =====================================================
+# ─────────────────────────────────────────────────────
 # PAGE CONFIG
-# =====================================================
+# ─────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="National Achievement Test Analysis",
+    page_title="NAT 2023-24 Intelligence Dashboard",
+    page_icon="🎓",
     layout="wide"
 )
 
-# =====================================================
-# DARK THEME
-# =====================================================
+# ─────────────────────────────────────────────────────
+# FUTURISTIC THEME
+# ─────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+* { font-family: 'Inter', sans-serif !important; box-sizing: border-box; }
 
 .stApp {
-    background-color: #0f1117;
-    color: white;
+    background: #050810;
+    background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(0,200,255,0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(120,0,255,0.04) 0%, transparent 50%);
 }
 
-h1, h2, h3 {
-    color: white;
+#MainMenu, footer, header { visibility: hidden; }
+.block-container { padding-top: 1.5rem !important; padding-bottom: 2rem !important; }
+
+h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    background: linear-gradient(135deg, #00c8ff, #7b2fff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0 !important;
+}
+h2 {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #c8d8f0 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    margin-top: 2rem !important;
+}
+h3 { color: #8899bb !important; font-size: 14px !important; font-weight: 500 !important; }
+
+.kpi-card {
+    background: linear-gradient(135deg, #0d1526 0%, #0a1020 100%);
+    border: 1px solid rgba(0,200,255,0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00c8ff, transparent);
+}
+.kpi-label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #4a6080; margin-bottom: 8px; }
+.kpi-value { font-size: 32px; font-weight: 700; color: #e8f4ff; font-family: 'JetBrains Mono', monospace !important; line-height: 1; }
+.kpi-sub   { font-size: 12px; color: #4a6080; margin-top: 6px; }
+.kpi-accent { color: #00c8ff; }
+.kpi-warn   { color: #ff6b35; }
+.kpi-good   { color: #00e5a0; }
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0,200,255,0.12);
+    margin-bottom: 20px;
+}
+.section-badge {
+    background: rgba(0,200,255,0.1);
+    border: 1px solid rgba(0,200,255,0.3);
+    color: #00c8ff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+.section-title-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #c8d8f0;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
-.insight-box {
-    background: #1a1f2e;
+.insight-card {
+    background: #0a1020;
+    border: 1px solid rgba(255,255,255,0.06);
     border-radius: 10px;
-    padding: 16px 20px;
-    border-left: 4px solid #378ADD;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #e2e8f0;
-    line-height: 1.8;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+}
+.insight-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+.insight-text  { font-size: 13px; color: #8899bb; line-height: 1.7; }
+.insight-big   { font-size: 22px; font-weight: 700; color: #e8f4ff; font-family: 'JetBrains Mono', monospace !important; }
+
+.neo-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.2), transparent);
+    margin: 2rem 0;
 }
 
-.finding-strong { color: #22c55e; font-weight: bold; }
-.finding-weak   { color: #f97316; font-weight: bold; }
-.finding-title  { color: #378ADD; font-weight: 700; font-size: 14px; margin-bottom: 8px; display: block; }
-
+.cluster-info-card {
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+    height: 100%;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# =====================================================
-# TITLE
-# =====================================================
+# ─────────────────────────────────────────────────────
+# PLOTLY THEME CONSTANTS
+# ─────────────────────────────────────────────────────
 
-st.title("🏫 National Achievement Test — Grade 6 Analysis")
+PLOT_BG  = "#080c18"
+PAPER_BG = "#080c18"
+GRID_CLR = "rgba(255,255,255,0.05)"
+TEXT_CLR = "#8899bb"
+FONT_FAM = "Inter"
 
-# =====================================================
+CLUSTER_COLORS = {
+    0: "#ff4466",
+    1: "#ffaa00",
+    2: "#00c8ff",
+    3: "#00e5a0"
+}
+
+CLUSTER_LABELS = {
+    0: "ALL-WEAK",
+    1: "MIXED-PERFORMANCE",
+    2: "AVERAGE",
+    3: "ALL-STRONG"
+}
+
+RADAR_FILLS = {
+    0: "rgba(255,68,102,0.12)",
+    1: "rgba(255,170,0,0.12)",
+    2: "rgba(0,200,255,0.12)",
+    3: "rgba(0,229,160,0.12)",
+}
+
+# ─────────────────────────────────────────────────────
 # LOAD DATA
-# =====================================================
+# ─────────────────────────────────────────────────────
 
 df = pd.read_csv("nat_2023-24_selected.csv")
-
-# =====================================================
-# DATA PREPARATION
-# =====================================================
 
 subject_columns = [
     "math_mps",
@@ -75,620 +176,538 @@ subject_columns = [
     "filipino_mps"
 ]
 
-subject_labels = [
-    "Math",
-    "English",
-    "Science",
-    "Araling Panlipunan",
-    "Filipino"
-]
+SHORT = ["Math", "English", "Science", "AP", "Filipino"]
 
 clean_df = df.copy()
+clean_df = clean_df.dropna(subset=subject_columns)
 
-clean_df = clean_df.dropna(
-    subset=subject_columns
-)
-
-# =====================================================
+# ─────────────────────────────────────────────────────
 # OVERALL MPS
-# =====================================================
+# ─────────────────────────────────────────────────────
 
 clean_df["overall_mps"] = (
-    clean_df[subject_columns]
-    .mean(axis=1)
-    .round(2)
+    clean_df[subject_columns].mean(axis=1).round(2)
 )
 
-# =====================================================
-# STANDARDIZATION
-# =====================================================
+# ─────────────────────────────────────────────────────
+# STANDARDIZATION + CLUSTERING
+# ─────────────────────────────────────────────────────
 
 X = clean_df[subject_columns]
-
 scaler = StandardScaler()
-
 X_scaled = scaler.fit_transform(X)
 
-# =====================================================
-# K-MEANS CLUSTERING
-# =====================================================
+kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+clean_df["cluster"] = kmeans.fit_predict(X_scaled)
 
-kmeans = KMeans(
-    n_clusters=4,
-    random_state=42,
-    n_init=10
-)
+# Sort clusters by overall mean so 0=weakest, 3=strongest
+cluster_means = clean_df.groupby("cluster")["overall_mps"].mean().sort_values()
+remap = {old: new for new, old in enumerate(cluster_means.index)}
+clean_df["cluster"] = clean_df["cluster"].map(remap)
 
-clusters = kmeans.fit_predict(X_scaled)
-
-clean_df["cluster"] = clusters
-
-# =====================================================
+# ─────────────────────────────────────────────────────
 # PCA
-# =====================================================
+# ─────────────────────────────────────────────────────
 
 pca = PCA(n_components=2)
-
 X_pca = pca.fit_transform(X_scaled)
-
 clean_df["PCA1"] = X_pca[:, 0]
 clean_df["PCA2"] = X_pca[:, 1]
 
-# =====================================================
+# ─────────────────────────────────────────────────────
 # AUTO LABELING
-# =====================================================
+# ─────────────────────────────────────────────────────
 
 def generate_cluster_label(row):
-
-    math_sci_avg = (
-        row["math_mps"] +
-        row["science_mps"]
-    ) / 2
-
-    lang_avg = (
-        row["english_mps"] +
-        row["filipino_mps"] +
-        row["araling_panlipunan_mps"]
-    ) / 3
-
+    math_sci_avg = (row["math_mps"] + row["science_mps"]) / 2
+    lang_avg = (row["english_mps"] + row["filipino_mps"] + row["araling_panlipunan_mps"]) / 3
     overall = row["overall_mps"]
-
     if overall < 40:
-
         return "ALL-WEAK"
-
     elif overall >= 70:
-
         return "ALL-STRONG"
-
     elif math_sci_avg - lang_avg >= 10:
-
         return "STEM-STRONG"
-
     elif lang_avg - math_sci_avg >= 10:
-
         return "LANGUAGE-STRONG"
-
     else:
-
         return "MIXED-PERFORMANCE"
 
+# ─────────────────────────────────────────────────────
+# HEADER
+# ─────────────────────────────────────────────────────
 
-# =====================================================
-# =====================================================
-# PART 1: CORRELATION ANALYSIS
-# =====================================================
-# =====================================================
+st.markdown("""
+<div style='margin-bottom:6px;'>
+    <span style='font-size:11px;letter-spacing:0.15em;color:#4a6080;text-transform:uppercase;'>
+        Department of Education · Philippines
+    </span>
+</div>
+""", unsafe_allow_html=True)
 
-st.header("📊 Part 1: Subject Correlation Analysis")
+st.title("National Achievement Test Intelligence Dashboard")
 
-st.caption(
-    "Research Question: Are subject performances independent, "
-    "or do weak students struggle across all subjects?"
-)
+st.markdown("""
+<div style='font-size:13px;color:#4a6080;margin-top:4px;margin-bottom:24px;'>
+    Grade 6 · School Year 2023–2024 · Subject Performance & Clustering Analysis
+</div>
+""", unsafe_allow_html=True)
 
-# --- Compute correlation matrix ---
+# ─────────────────────────────────────────────────────
+# KPI ROW
+# ─────────────────────────────────────────────────────
+
+total      = len(clean_df)
+avg_mps    = clean_df["overall_mps"].mean()
+critical   = (clean_df["overall_mps"] < 40).sum()
+strong     = (clean_df["overall_mps"] >= 70).sum()
+crit_pct   = critical / total * 100
+strong_pct = strong   / total * 100
+
+k1, k2, k3, k4, k5 = st.columns(5)
+
+for col, label, value, sub, cls in [
+    (k1, "Total Schools",    f"{total:,}",       "all schools analyzed",       "accent"),
+    (k2, "Mean Overall MPS", f"{avg_mps:.1f}",   "avg across 5 subjects",      "accent"),
+    (k3, "Critical Schools", f"{critical:,}",    f"{crit_pct:.1f}% · MPS < 40","warn"),
+    (k4, "Strong Schools",   f"{strong:,}",      f"{strong_pct:.1f}% · MPS ≥ 70","good"),
+    (k5, "Subjects Tracked", "5",                "Math · Eng · Sci · AP · Fil","accent"),
+]:
+    with col:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">{label}</div>
+            <div class="kpi-value kpi-{cls}">{value}</div>
+            <div class="kpi-sub">{sub}</div>
+        </div>""", unsafe_allow_html=True)
+
+st.markdown("<div class='neo-divider'></div>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────
+# PART 1 — CORRELATION
+# ─────────────────────────────────────────────────────
+
+st.markdown("""
+<div class="section-header">
+    <span class="section-badge">Part 01</span>
+    <span class="section-title-text">Subject Correlation Analysis</span>
+</div>
+<div style='font-size:13px;color:#4a6080;margin-bottom:20px;'>
+    Research Question: Are subject performances independent, or do weak students struggle across all subjects?
+</div>
+""", unsafe_allow_html=True)
+
 corr_matrix = clean_df[subject_columns].corr().round(4)
 
-col_heatmap, col_bars = st.columns([1, 1])
+col_heat, col_pair = st.columns(2)
 
-# ── Heatmap ──────────────────────────────────────────
-with col_heatmap:
-
-    st.subheader("Correlation Heatmap")
-
-    fig_heat, ax_heat = plt.subplots(figsize=(7, 5))
-
-    fig_heat.patch.set_facecolor("#1a1f2e")
-    ax_heat.set_facecolor("#1a1f2e")
-
-    # Draw the heatmap manually with imshow
-    cmap = plt.cm.RdYlGn
-    im = ax_heat.imshow(
-        corr_matrix.values,
-        cmap=cmap,
-        vmin=0.55,
-        vmax=1.0,
-        aspect="auto"
+# ── Heatmap ───────────────────────────────────────────
+with col_heat:
+    fig_heat = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=SHORT, y=SHORT,
+        colorscale=[
+            [0.0, "#0d1526"],
+            [0.3, "#0c3060"],
+            [0.6, "#0055aa"],
+            [0.8, "#0088dd"],
+            [1.0, "#00c8ff"],
+        ],
+        zmin=0.55, zmax=1.0,
+        text=[[f"r = {v:.4f}" for v in row] for row in corr_matrix.values],
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="white"),
+        showscale=True,
+        colorbar=dict(
+            tickfont=dict(color=TEXT_CLR, size=10),
+            title=dict(text="r", font=dict(color=TEXT_CLR)),
+            thickness=12, len=0.9,
+        )
+    ))
+    fig_heat.update_layout(
+        title=dict(text="Correlation Matrix — All Subjects", font=dict(size=13, color="#c8d8f0")),
+        height=380,
+        paper_bgcolor=PAPER_BG, plot_bgcolor=PLOT_BG,
+        font=dict(family=FONT_FAM, color=TEXT_CLR),
+        margin=dict(l=10, r=10, t=50, b=10),
+        xaxis=dict(color=TEXT_CLR),
+        yaxis=dict(color=TEXT_CLR, autorange="reversed"),
     )
+    st.plotly_chart(fig_heat, use_container_width=True)
 
-    # Tick labels
-    ax_heat.set_xticks(range(len(subject_labels)))
-    ax_heat.set_yticks(range(len(subject_labels)))
-    short_labels = ["Math", "English", "Science", "AP", "Filipino"]
-    ax_heat.set_xticklabels(short_labels, color="white", fontsize=10)
-    ax_heat.set_yticklabels(short_labels, color="white", fontsize=10)
-    plt.xticks(rotation=30, ha="right")
-
-    # Annotate each cell with the r value
-    for i in range(len(subject_columns)):
-        for j in range(len(subject_columns)):
-            val = corr_matrix.values[i, j]
-            text_color = "black" if val > 0.75 else "white"
-            ax_heat.text(
-                j, i, f"{val:.2f}",
-                ha="center", va="center",
-                fontsize=10, color=text_color, fontweight="bold"
-            )
-
-    cbar = fig_heat.colorbar(im, ax=ax_heat, fraction=0.046, pad=0.04)
-    cbar.ax.yaxis.set_tick_params(color="white")
-    plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
-    cbar.set_label("Pearson r", color="white")
-
-    ax_heat.set_title(
-        "Subject Correlation Matrix",
-        color="white", fontsize=12, pad=12
-    )
-    ax_heat.tick_params(colors="white")
-    for spine in ax_heat.spines.values():
-        spine.set_edgecolor("#2e3650")
-
-    fig_heat.tight_layout()
-    st.pyplot(fig_heat)
-
-# ── Pairwise bar chart ────────────────────────────────
-with col_bars:
-
-    st.subheader("Pairwise Correlations")
-
+# ── Pairwise bar ──────────────────────────────────────
+with col_pair:
     pairs = []
     for i in range(len(subject_columns)):
         for j in range(i + 1, len(subject_columns)):
             pairs.append({
-                "Pair": f"{short_labels[i]} ↔ {short_labels[j]}",
+                "Pair": f"{SHORT[i]} ↔ {SHORT[j]}",
                 "r": round(corr_matrix.values[i, j], 4)
             })
-
-    pairs_df = pd.DataFrame(pairs).sort_values("r", ascending=True)
-
-    fig_bar, ax_bar = plt.subplots(figsize=(7, 5))
-    fig_bar.patch.set_facecolor("#1a1f2e")
-    ax_bar.set_facecolor("#242b3d")
+    pairs_df = pd.DataFrame(pairs).sort_values("r")
 
     bar_colors = [
-        "#E24B4A" if r < 0.68
-        else "#EF9F27" if r < 0.73
-        else "#22c55e"
+        "#ff4466" if r < 0.68 else "#ffaa00" if r < 0.73 else "#00c8ff"
         for r in pairs_df["r"]
     ]
 
-    bars = ax_bar.barh(
-        pairs_df["Pair"],
-        pairs_df["r"],
-        color=bar_colors,
-        edgecolor="#0f1117",
-        height=0.6
+    fig_bar = go.Figure(go.Bar(
+        x=pairs_df["r"],
+        y=pairs_df["Pair"],
+        orientation="h",
+        marker=dict(color=bar_colors, line=dict(width=0)),
+        text=[f"  r = {r:.4f}" for r in pairs_df["r"]],
+        textposition="outside",
+        textfont=dict(size=11, color="#8899bb"),
+        hovertemplate="<b>%{y}</b><br>r = %{x:.4f}<extra></extra>"
+    ))
+    fig_bar.update_layout(
+        title=dict(text="Pairwise Correlations (sorted)", font=dict(size=13, color="#c8d8f0")),
+        height=380,
+        paper_bgcolor=PAPER_BG, plot_bgcolor=PLOT_BG,
+        font=dict(family=FONT_FAM, color=TEXT_CLR),
+        margin=dict(l=10, r=80, t=50, b=10),
+        xaxis=dict(range=[0.58, 0.88], gridcolor=GRID_CLR, color=TEXT_CLR, title="Pearson r"),
+        yaxis=dict(gridcolor="rgba(0,0,0,0)", color=TEXT_CLR),
+        bargap=0.3,
     )
+    st.plotly_chart(fig_bar, use_container_width=True)
 
-    # Labels on bars
-    for bar, r_val in zip(bars, pairs_df["r"]):
-        ax_bar.text(
-            bar.get_width() + 0.002,
-            bar.get_y() + bar.get_height() / 2,
-            f"r = {r_val:.4f}",
-            va="center", ha="left",
-            color="white", fontsize=9
+# ── Insight cards ─────────────────────────────────────
+strongest = pairs_df.iloc[-1]
+weakest   = pairs_df.iloc[0]
+avg_r     = pairs_df["r"].mean()
+
+ci1, ci2, ci3 = st.columns(3)
+with ci1:
+    st.markdown(f"""
+    <div class="insight-card" style="border-left:3px solid #00c8ff;">
+        <div class="insight-label" style="color:#00c8ff;">Strongest Pair</div>
+        <div class="insight-big">{strongest['r']:.4f}</div>
+        <div class="insight-text"><b style='color:#e8f4ff'>{strongest['Pair']}</b> — nearly lockstep. Schools strong in one are almost always strong in the other.</div>
+    </div>""", unsafe_allow_html=True)
+
+with ci2:
+    st.markdown(f"""
+    <div class="insight-card" style="border-left:3px solid #ffaa00;">
+        <div class="insight-label" style="color:#ffaa00;">Weakest Pair</div>
+        <div class="insight-big">{weakest['r']:.4f}</div>
+        <div class="insight-text"><b style='color:#e8f4ff'>{weakest['Pair']}</b> — still a strong positive correlation; weakest link but far from independent.</div>
+    </div>""", unsafe_allow_html=True)
+
+with ci3:
+    st.markdown(f"""
+    <div class="insight-card" style="border-left:3px solid #00e5a0;">
+        <div class="insight-label" style="color:#00e5a0;">Key Takeaway</div>
+        <div class="insight-big">{avg_r:.3f}</div>
+        <div class="insight-text">Average r across all pairs. Subjects are <b style='color:#00e5a0'>NOT independent</b> — weak students struggle across all subjects.</div>
+    </div>""", unsafe_allow_html=True)
+
+# ── MPS Distribution ──────────────────────────────────
+st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class="section-header" style='border-color:rgba(0,229,160,0.12);'>
+    <span class="section-badge" style='color:#00e5a0;background:rgba(0,229,160,0.08);border-color:rgba(0,229,160,0.25);'>Distribution</span>
+    <span class="section-title-text">Overall MPS Score Distribution</span>
+</div>""", unsafe_allow_html=True)
+
+col_dist, col_bands = st.columns([2, 1])
+
+with col_dist:
+    fig_dist = go.Figure()
+
+    for x0, x1, color, label in [
+        (0,  40,  "rgba(255,68,102,0.08)",  "Critical"),
+        (40, 55,  "rgba(255,170,0,0.08)",   "Weak"),
+        (55, 70,  "rgba(0,200,255,0.08)",   "Average"),
+        (70, 100, "rgba(0,229,160,0.08)",   "Strong"),
+    ]:
+        fig_dist.add_vrect(x0=x0, x1=x1, fillcolor=color, line_width=0, layer="below")
+        fig_dist.add_annotation(
+            x=(x0+x1)/2, y=1.05, xref="x", yref="paper",
+            text=label, showarrow=False,
+            font=dict(size=10, color=color.replace("0.08","0.85")),
         )
 
-    ax_bar.set_xlim(0.60, 0.86)
-    ax_bar.set_xlabel("Correlation (r)", color="white")
-    ax_bar.set_title(
-        "All Subject Pair Correlations (sorted)",
-        color="white", fontsize=12, pad=12
-    )
-    ax_bar.tick_params(colors="white")
-    ax_bar.xaxis.label.set_color("white")
-    for spine in ax_bar.spines.values():
-        spine.set_edgecolor("#2e3650")
-    ax_bar.grid(axis="x", alpha=0.2, color="white")
-
-    fig_bar.tight_layout()
-    st.pyplot(fig_bar)
-
-# ── Insight boxes ─────────────────────────────────────
-
-strongest_pair = pairs_df.iloc[-1]
-weakest_pair   = pairs_df.iloc[0]
-avg_r          = pairs_df["r"].mean()
-
-col_i1, col_i2, col_i3 = st.columns(3)
-
-with col_i1:
-    st.markdown(
-        f"""<div class="insight-box">
-        <span class="finding-title">🔗 Strongest Pair</span>
-        <span class="finding-strong">{strongest_pair['Pair']}</span><br>
-        r = <b>{strongest_pair['r']:.4f}</b> — These two subjects move
-        almost in lockstep. Schools strong in one are almost always
-        strong in the other.
-        </div>""",
-        unsafe_allow_html=True
-    )
-
-with col_i2:
-    st.markdown(
-        f"""<div class="insight-box" style="border-color:#f97316">
-        <span class="finding-title" style="color:#f97316">🔗 Weakest Pair</span>
-        <span class="finding-weak">{weakest_pair['Pair']}</span><br>
-        r = <b>{weakest_pair['r']:.4f}</b> — Still a strong positive
-        correlation; the weakest link among all pairs, but far from
-        independent.
-        </div>""",
-        unsafe_allow_html=True
-    )
-
-with col_i3:
-    st.markdown(
-        f"""<div class="insight-box" style="border-color:#22c55e">
-        <span class="finding-title" style="color:#22c55e">📌 Key Takeaway</span>
-        Average r = <b>{avg_r:.3f}</b> across all pairs.<br><br>
-        Subjects are <b>NOT independent</b>. Weak students struggle
-        across <em>all</em> subjects — there is no "safe" subject
-        where they perform well in isolation.
-        </div>""",
-        unsafe_allow_html=True
-    )
-
-# ── Distribution of overall MPS ──────────────────────
-
-st.subheader("Overall MPS Distribution")
-
-col_dist1, col_dist2 = st.columns([2, 1])
-
-with col_dist1:
-
-    fig_dist, ax_dist = plt.subplots(figsize=(10, 4))
-    fig_dist.patch.set_facecolor("#1a1f2e")
-    ax_dist.set_facecolor("#242b3d")
-
-    # Histogram with colored bands
-    ax_dist.axvspan(0,  40,  alpha=0.15, color="#E24B4A")
-    ax_dist.axvspan(40, 55,  alpha=0.15, color="#EF9F27")
-    ax_dist.axvspan(55, 70,  alpha=0.15, color="#378ADD")
-    ax_dist.axvspan(70, 100, alpha=0.15, color="#22c55e")
-
-    ax_dist.hist(
-        clean_df["overall_mps"],
-        bins=40,
-        color="#378ADD",
-        edgecolor="#0f1117",
-        alpha=0.85
-    )
+    fig_dist.add_trace(go.Histogram(
+        x=clean_df["overall_mps"],
+        nbinsx=50,
+        marker=dict(
+            color="rgba(0,200,255,0.7)",
+            line=dict(color="rgba(0,200,255,0.3)", width=0.5)
+        ),
+        hovertemplate="MPS: %{x:.1f}<br>Schools: %{y}<extra></extra>",
+        name="Schools"
+    ))
 
     mean_val = clean_df["overall_mps"].mean()
-    ax_dist.axvline(
-        mean_val, color="#f97316",
-        linewidth=2, linestyle="--",
-        label=f"Mean = {mean_val:.1f}"
+    fig_dist.add_vline(
+        x=mean_val, line_dash="dash",
+        line_color="#ffaa00", line_width=2,
+        annotation_text=f"Mean {mean_val:.1f}",
+        annotation_font=dict(color="#ffaa00", size=11),
+        annotation_position="top right"
     )
 
-    # Band labels
-    for x, label, color in [
-        (20,  "Critical\n(<40)",  "#E24B4A"),
-        (47,  "Weak\n(40–55)",    "#EF9F27"),
-        (62,  "Average\n(55–70)", "#a0aec0"),
-        (82,  "Strong\n(70+)",    "#22c55e"),
-    ]:
-        ax_dist.text(
-            x, ax_dist.get_ylim()[1] * 0.92 if ax_dist.get_ylim()[1] > 0 else 50,
-            label, ha="center", va="top",
-            color=color, fontsize=9, fontweight="bold"
-        )
-
-    ax_dist.set_xlabel("Overall MPS", color="white")
-    ax_dist.set_ylabel("Number of Schools", color="white")
-    ax_dist.set_title(
-        "Distribution of Overall MPS Across All Schools",
-        color="white", fontsize=12
+    fig_dist.update_layout(
+        height=300,
+        paper_bgcolor=PAPER_BG, plot_bgcolor=PLOT_BG,
+        font=dict(family=FONT_FAM, color=TEXT_CLR),
+        margin=dict(l=10, r=10, t=40, b=10),
+        showlegend=False,
+        xaxis=dict(title="Overall MPS", gridcolor=GRID_CLR, color=TEXT_CLR, range=[0,100]),
+        yaxis=dict(title="Number of Schools", gridcolor=GRID_CLR, color=TEXT_CLR),
+        bargap=0.02,
     )
-    ax_dist.tick_params(colors="white")
-    ax_dist.legend(
-        facecolor="#1a1f2e", labelcolor="white",
-        edgecolor="#2e3650"
-    )
-    for spine in ax_dist.spines.values():
-        spine.set_edgecolor("#2e3650")
+    st.plotly_chart(fig_dist, use_container_width=True)
 
-    fig_dist.tight_layout()
-    st.pyplot(fig_dist)
-
-with col_dist2:
-
-    # Band counts
+with col_bands:
+    total_n = len(clean_df)
     bands = [
-        ("Critical (<40)",  (clean_df["overall_mps"] < 40).sum(),          "#E24B4A"),
-        ("Weak (40–55)",    ((clean_df["overall_mps"] >= 40) & (clean_df["overall_mps"] < 55)).sum(), "#EF9F27"),
-        ("Average (55–70)", ((clean_df["overall_mps"] >= 55) & (clean_df["overall_mps"] < 70)).sum(), "#378ADD"),
-        ("Strong (70+)",    (clean_df["overall_mps"] >= 70).sum(),          "#22c55e"),
+        ("Critical", "< 40",  (clean_df["overall_mps"] < 40).sum(),                                          "#ff4466"),
+        ("Weak",     "40–55", ((clean_df["overall_mps"] >= 40) & (clean_df["overall_mps"] < 55)).sum(),       "#ffaa00"),
+        ("Average",  "55–70", ((clean_df["overall_mps"] >= 55) & (clean_df["overall_mps"] < 70)).sum(),       "#00c8ff"),
+        ("Strong",   "70+",   (clean_df["overall_mps"] >= 70).sum(),                                          "#00e5a0"),
     ]
-
-    total = len(clean_df)
-    st.markdown("<br>", unsafe_allow_html=True)
-    for label, count, color in bands:
-        pct = count / total * 100
-        st.markdown(
-            f"""<div style="background:#1a1f2e;border-radius:8px;
-                padding:10px 14px;margin-bottom:8px;
-                border-left:4px solid {color}">
-                <span style="color:{color};font-weight:700">{label}</span><br>
-                <span style="font-size:20px;font-weight:700;color:white">{count:,}</span>
-                <span style="color:#a0aec0;font-size:12px"> schools ({pct:.1f}%)</span>
-            </div>""",
-            unsafe_allow_html=True
-        )
-
-st.divider()
-
-
-# =====================================================
-# =====================================================
-# PART 2: CLUSTERING
-# =====================================================
-# =====================================================
-
-st.header("🔵 Part 2: Subject Cluster Analysis")
-
-# =====================================================
-# CLUSTER VISUALIZATION
-# =====================================================
-
-st.subheader("Cluster Scatter Plot")
-
-st.caption(
-    "Research Question: Can we identify distinct student/school types? Which at-risk patterns emerge?"
-)
-
-fig, ax = plt.subplots(figsize=(12, 7))
-
-colors = {
-    0: "#E24B4A",
-    1: "#EF9F27",
-    2: "#639922",
-    3: "#378ADD"
-}
-
-cluster_labels = {
-    0: "ALL-WEAK",
-    1: "STEM-STRONG",
-    2: "LANGUAGE-STRONG",
-    3: "ALL-STRONG"
-}
-
-for cluster_id in sorted(clean_df["cluster"].unique()):
-
-    cluster_data = clean_df[
-        clean_df["cluster"] == cluster_id
-    ]
-
-    ax.scatter(
-        cluster_data["math_mps"],
-        cluster_data["english_mps"],
-        s=cluster_data["overall_mps"] * 4,
-        alpha=0.7,
-        color=colors[cluster_id],
-        label=cluster_labels[cluster_id]
-    )
-
-ax.set_xlim(0, 100)
-
-ax.set_ylim(0, 100)
-
-ax.set_xlabel("Math")
-
-ax.set_ylabel("English")
-
-ax.set_title(
-    "Math vs English Performance Clusters"
-)
-
-legend = ax.legend(
-    title="Cluster Groups",
-    fontsize=10
-)
-
-ax.grid(alpha=0.3)
-
-st.pyplot(fig)
-
-# =====================================================
-# CLUSTER SUMMARY
-# =====================================================
-
-st.subheader("Cluster Summary")
-
-cluster_summary = (
-    clean_df
-    .groupby("cluster")
-    [
-        subject_columns + ["overall_mps"]
-    ]
-    .mean()
-    .round(2)
-)
-
-cluster_summary["Cluster Type"] = (
-    cluster_summary.apply(
-        generate_cluster_label,
-        axis=1
-    )
-)
-
-cluster_summary["School Count"] = (
-    clean_df["cluster"]
-    .value_counts()
-    .sort_index()
-    .values
-)
-
-st.dataframe(cluster_summary)
-
-# =====================================================
-# CLUSTER PROFILES
-# =====================================================
-
-st.subheader("Cluster Profiles")
-
-cluster_profile = (
-    clean_df
-    .groupby("cluster")
-    [
-        subject_columns + ["overall_mps"]
-    ]
-    .mean()
-    .round(2)
-)
-
-cluster_profile["Cluster Type"] = (
-    cluster_profile.apply(
-        generate_cluster_label,
-        axis=1
-    )
-)
-
-cluster_profile["School Count"] = (
-    clean_df["cluster"]
-    .value_counts()
-    .sort_index()
-    .values
-)
-
-for cluster_id in sorted(
-    clean_df["cluster"].unique()
-):
-
-    row = cluster_profile.loc[cluster_id]
-
-    st.subheader(
-        f"Cluster {cluster_id} — {row['Cluster Type']}"
-    )
-
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-
-        fig, ax = plt.subplots(figsize=(8, 4))
-
-        values = [
-            row["math_mps"],
-            row["english_mps"],
-            row["science_mps"],
-            row["araling_panlipunan_mps"],
-            row["filipino_mps"]
-        ]
-
-        labels = [
-            "Math",
-            "English",
-            "Science",
-            "AP",
-            "Filipino"
-        ]
-
-        ax.bar(labels, values)
-
-        ax.set_ylim(0, 100)
-
-        ax.set_ylabel(
-            "Mean Percentage Score"
-        )
-
-        ax.set_title(
-            f"Cluster {cluster_id} Subject Profile"
-        )
-
-        st.pyplot(fig)
-
-    with col2:
-
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+    for name, rng, count, color in bands:
+        pct = count / total_n * 100
         st.markdown(f"""
-### Cluster Summary
+        <div class="insight-card" style='border-left:3px solid {color};padding:12px 16px;margin-bottom:8px;'>
+            <div style='display:flex;justify-content:space-between;align-items:baseline;'>
+                <span style='font-size:11px;font-weight:600;letter-spacing:0.08em;color:{color};text-transform:uppercase;'>{name} <span style='color:#4a6080;font-weight:400;'>({rng})</span></span>
+                <span style='font-size:20px;font-weight:700;color:#e8f4ff;font-family:JetBrains Mono,monospace;'>{count:,}</span>
+            </div>
+            <div style='font-size:11px;color:#4a6080;margin:4px 0 6px;'>{pct:.1f}% of all schools</div>
+            <div style='height:3px;background:rgba(255,255,255,0.05);border-radius:2px;overflow:hidden;'>
+                <div style='width:{pct}%;height:100%;background:{color};border-radius:2px;'></div>
+            </div>
+        </div>""", unsafe_allow_html=True)
 
-**Cluster Type:**  
-{row['Cluster Type']}
+st.markdown("<div class='neo-divider'></div>", unsafe_allow_html=True)
 
-**School Count:**  
-{int(row['School Count'])}
+# ─────────────────────────────────────────────────────
+# PART 2 — CLUSTERING
+# ─────────────────────────────────────────────────────
 
-**Average Overall MPS:**  
-{row['overall_mps']:.2f}
-""")
+st.markdown("""
+<div class="section-header" style='border-color:rgba(170,102,255,0.15);'>
+    <span class="section-badge" style='color:#aa66ff;background:rgba(170,102,255,0.08);border-color:rgba(170,102,255,0.25);'>Part 02</span>
+    <span class="section-title-text">K-Means Clustering Analysis</span>
+</div>
+<div style='font-size:13px;color:#4a6080;margin-bottom:20px;'>
+    Research Question: Can we identify distinct school types? Which at-risk patterns emerge?
+</div>
+""", unsafe_allow_html=True)
 
-        # =====================================================
-        # RECOMMENDED INTERVENTION
-        # =====================================================
+# ── Scatter + Radar ───────────────────────────────────
+col_scatter, col_radar = st.columns(2)
 
-        if row["Cluster Type"] == "ALL-WEAK":
+with col_scatter:
+    fig_scatter = go.Figure()
+    for cid in sorted(clean_df["cluster"].unique()):
+        cdata = clean_df[clean_df["cluster"] == cid]
+        fig_scatter.add_trace(go.Scatter(
+            x=cdata["math_mps"],
+            y=cdata["english_mps"],
+            mode="markers",
+            name=f"C{cid} · {CLUSTER_LABELS[cid]}",
+            marker=dict(
+                color=CLUSTER_COLORS[cid],
+                size=cdata["overall_mps"] / 10 + 3,
+                opacity=0.65, line=dict(width=0)
+            ),
+            hovertemplate=(
+                f"<b>Cluster {cid} — {CLUSTER_LABELS[cid]}</b><br>"
+                "Math: %{x:.1f}<br>English: %{y:.1f}<extra></extra>"
+            )
+        ))
+    fig_scatter.update_layout(
+        title=dict(text="Math vs English — Cluster View", font=dict(size=13, color="#c8d8f0")),
+        height=400,
+        paper_bgcolor=PAPER_BG, plot_bgcolor=PLOT_BG,
+        font=dict(family=FONT_FAM, color=TEXT_CLR),
+        margin=dict(l=10, r=10, t=50, b=10),
+        xaxis=dict(title="Math MPS", range=[0,100], gridcolor=GRID_CLR, color=TEXT_CLR),
+        yaxis=dict(title="English MPS", range=[0,100], gridcolor=GRID_CLR, color=TEXT_CLR),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11)),
+    )
+    st.plotly_chart(fig_scatter, use_container_width=True)
 
-            st.error("""
-### Recommended Intervention
+with col_radar:
+    cluster_profile = (
+        clean_df.groupby("cluster")[subject_columns + ["overall_mps"]]
+        .mean().round(2)
+    )
+    categories = SHORT + [SHORT[0]]
+    fig_radar = go.Figure()
+    for cid in sorted(cluster_profile.index):
+        vals = [cluster_profile.loc[cid, s] for s in subject_columns] + [cluster_profile.loc[cid, subject_columns[0]]]
+        fig_radar.add_trace(go.Scatterpolar(
+            r=vals, theta=categories,
+            fill="toself",
+            name=f"C{cid} · {CLUSTER_LABELS[cid]}",
+            line=dict(color=CLUSTER_COLORS[cid], width=2),
+            fillcolor=RADAR_FILLS[cid],
+            opacity=0.9,
+        ))
+    fig_radar.update_layout(
+        title=dict(text="Subject Profile per Cluster", font=dict(size=13, color="#c8d8f0")),
+        polar=dict(
+            bgcolor=PLOT_BG,
+            radialaxis=dict(visible=True, range=[0,100], gridcolor=GRID_CLR, color=TEXT_CLR, tickfont=dict(size=9)),
+            angularaxis=dict(gridcolor=GRID_CLR, color=TEXT_CLR),
+        ),
+        height=400,
+        paper_bgcolor=PAPER_BG,
+        font=dict(family=FONT_FAM, color=TEXT_CLR),
+        margin=dict(l=10, r=10, t=50, b=10),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11)),
+    )
+    st.plotly_chart(fig_radar, use_container_width=True)
 
-- Comprehensive academic overhaul
-- Teacher training
-- Infrastructure support
-- Intensive remediation
-- Basic literacy and numeracy programs
-""")
+# ── Cluster Summary Table ─────────────────────────────
+st.markdown("""
+<div class="section-header" style='margin-top:0.5rem;'>
+    <span class="section-badge">Summary</span>
+    <span class="section-title-text">Cluster Summary</span>
+</div>""", unsafe_allow_html=True)
 
-        elif row["Cluster Type"] == "ALL-STRONG":
+cluster_summary = cluster_profile.copy()
+cluster_summary["Cluster Type"] = cluster_summary.apply(generate_cluster_label, axis=1)
+cluster_summary["School Count"]  = clean_df["cluster"].value_counts().sort_index().values
+st.dataframe(
+    cluster_summary.style.background_gradient(cmap="Blues", subset=subject_columns + ["overall_mps"]),
+    use_container_width=True
+)
 
-            st.success("""
-### Recommended Intervention
+# ── Cluster Profiles ──────────────────────────────────
+st.markdown("""
+<div class="section-header" style='margin-top:1.5rem;'>
+    <span class="section-badge">Profiles</span>
+    <span class="section-title-text">Cluster Detailed Profiles & Interventions</span>
+</div>""", unsafe_allow_html=True)
 
-- Maintain excellence
-- Benchmark model schools
-- Advanced enrichment programs
-- Share best practices
-""")
+INTERVENTIONS = {
+    "ALL-WEAK": (
+        "#ff4466", "rgba(255,68,102,0.08)", "rgba(255,68,102,0.25)",
+        "Urgent Intervention Required",
+        ["Comprehensive academic overhaul", "Teacher training programs",
+         "Infrastructure & resource support", "Intensive remediation",
+         "Basic literacy and numeracy programs"]
+    ),
+    "MIXED-PERFORMANCE": (
+        "#ffaa00", "rgba(255,170,0,0.08)", "rgba(255,170,0,0.25)",
+        "Targeted Support Needed",
+        ["Balanced remediation across subjects", "Subject-specific tutoring",
+         "Performance monitoring & tracking", "Peer-learning programs"]
+    ),
+    "STEM-STRONG": (
+        "#00c8ff", "rgba(0,200,255,0.08)", "rgba(0,200,255,0.25)",
+        "Language Enrichment Needed",
+        ["English tutoring", "Filipino comprehension support",
+         "Reading interventions", "Writing enhancement programs"]
+    ),
+    "LANGUAGE-STRONG": (
+        "#aa66ff", "rgba(170,102,255,0.08)", "rgba(170,102,255,0.25)",
+        "STEM Enrichment Needed",
+        ["Math remediation", "Science tutoring",
+         "STEM laboratory exposure", "Quantitative reasoning support"]
+    ),
+    "AVERAGE": (
+        "#00c8ff", "rgba(0,200,255,0.08)", "rgba(0,200,255,0.25)",
+        "Growth Acceleration",
+        ["Structured enrichment programs", "Focus on weaker subject areas",
+         "Teacher professional development", "Student engagement initiatives"]
+    ),
+    "ALL-STRONG": (
+        "#00e5a0", "rgba(0,229,160,0.08)", "rgba(0,229,160,0.25)",
+        "Maintain & Scale Excellence",
+        ["Benchmark as model schools", "Share best practices nationwide",
+         "Advanced enrichment programs", "Mentorship of struggling schools"]
+    ),
+}
 
-        elif row["Cluster Type"] == "STEM-STRONG":
+for cid in sorted(cluster_profile.index):
+    row = cluster_profile.loc[cid]
+    ctype = generate_cluster_label(row)
+    color, bg, border, int_title, int_items = INTERVENTIONS.get(
+        ctype, ("#8899bb", "rgba(136,153,187,0.08)", "rgba(136,153,187,0.25)", "Monitoring", ["Performance monitoring"])
+    )
+    count = int(clean_df[clean_df["cluster"] == cid].shape[0])
+    pct   = count / len(clean_df) * 100
 
-            st.warning("""
-### Recommended Intervention
+    col_chart, col_info = st.columns([3, 2])
 
-- English tutoring
-- Filipino comprehension support
-- Reading interventions
-- Writing enhancement programs
-""")
+    with col_chart:
+        vals = [row[s] for s in subject_columns]
+        fig_cbar = go.Figure(go.Bar(
+            x=SHORT, y=vals,
+            marker=dict(
+                color=[color] * 5,
+                opacity=[0.4 + 0.6 * (v / 100) for v in vals],
+                line=dict(width=0)
+            ),
+            text=[f"{v:.1f}" for v in vals],
+            textposition="outside",
+            textfont=dict(size=11, color=color),
+            hovertemplate="%{x}: %{y:.2f}<extra></extra>",
+        ))
+        fig_cbar.add_hline(
+            y=60, line_dash="dot",
+            line_color="rgba(255,255,255,0.15)", line_width=1,
+            annotation_text="60 benchmark",
+            annotation_font=dict(size=9, color="rgba(255,255,255,0.3)"),
+            annotation_position="top right"
+        )
+        fig_cbar.update_layout(
+            title=dict(
+                text=f"Cluster {cid} — {ctype} · Overall Avg: {row['overall_mps']:.1f}",
+                font=dict(size=13, color=color)
+            ),
+            height=300,
+            paper_bgcolor=PAPER_BG, plot_bgcolor=PLOT_BG,
+            font=dict(family=FONT_FAM, color=TEXT_CLR),
+            margin=dict(l=10, r=10, t=50, b=10),
+            yaxis=dict(range=[0,110], gridcolor=GRID_CLR, color=TEXT_CLR, title="MPS"),
+            xaxis=dict(gridcolor="rgba(0,0,0,0)", color=TEXT_CLR),
+        )
+        st.plotly_chart(fig_cbar, use_container_width=True)
 
-        elif row["Cluster Type"] == "LANGUAGE-STRONG":
+    with col_info:
+        items_html = "".join([
+            f"<div style='display:flex;gap:8px;margin-bottom:6px;'>"
+            f"<span style='color:{color};font-size:11px;'>▸</span>"
+            f"<span style='font-size:12px;color:#8899bb;'>{item}</span></div>"
+            for item in int_items
+        ])
+        st.markdown(f"""
+        <div style='background:{bg};border:1px solid {border};border-radius:12px;padding:20px;margin-top:8px;'>
+            <div style='font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:{color};margin-bottom:12px;'>
+                Cluster {cid} · {ctype}
+            </div>
+            <div style='display:flex;gap:20px;margin-bottom:16px;'>
+                <div>
+                    <div style='font-size:10px;color:#4a6080;text-transform:uppercase;letter-spacing:0.08em;'>Schools</div>
+                    <div style='font-size:24px;font-weight:700;color:#e8f4ff;font-family:JetBrains Mono,monospace;'>{count:,}</div>
+                    <div style='font-size:11px;color:#4a6080;'>{pct:.1f}% of total</div>
+                </div>
+                <div>
+                    <div style='font-size:10px;color:#4a6080;text-transform:uppercase;letter-spacing:0.08em;'>Avg MPS</div>
+                    <div style='font-size:24px;font-weight:700;color:{color};font-family:JetBrains Mono,monospace;'>{row['overall_mps']:.1f}</div>
+                    <div style='font-size:11px;color:#4a6080;'>overall mean</div>
+                </div>
+            </div>
+            <div style='font-size:11px;font-weight:600;color:#c8d8f0;margin-bottom:10px;'>{int_title}</div>
+            {items_html}
+        </div>""", unsafe_allow_html=True)
 
-            st.warning("""
-### Recommended Intervention
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
-- Math remediation
-- Science tutoring
-- STEM laboratory exposure
-- Quantitative reasoning support
-""")
-
-        else:
-
-            st.info("""
-### Recommended Intervention
-
-- Balanced academic support
-- Subject-specific remediation
-- Performance monitoring
-""")
+# ── Footer ────────────────────────────────────────────
+st.markdown("""
+<div class='neo-divider'></div>
+<div style='text-align:center;padding:20px 0;color:#2a3548;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;'>
+    NAT Intelligence Dashboard · Grade 6 · SY 2023–2024 · Department of Education Philippines
+</div>
+""", unsafe_allow_html=True)
