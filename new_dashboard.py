@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
@@ -32,6 +33,21 @@ h1, h2, h3 {
     color: white;
 }
 
+.insight-box {
+    background: #1a1f2e;
+    border-radius: 10px;
+    padding: 16px 20px;
+    border-left: 4px solid #378ADD;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #e2e8f0;
+    line-height: 1.8;
+}
+
+.finding-strong { color: #22c55e; font-weight: bold; }
+.finding-weak   { color: #f97316; font-weight: bold; }
+.finding-title  { color: #378ADD; font-weight: 700; font-size: 14px; margin-bottom: 8px; display: block; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -39,7 +55,7 @@ h1, h2, h3 {
 # TITLE
 # =====================================================
 
-st.title("🏫 Clustered School Data Visualization")
+st.title("🏫 National Achievement Test — Grade 6 Analysis")
 
 # =====================================================
 # LOAD DATA
@@ -57,6 +73,14 @@ subject_columns = [
     "science_mps",
     "araling_panlipunan_mps",
     "filipino_mps"
+]
+
+subject_labels = [
+    "Math",
+    "English",
+    "Science",
+    "Araling Panlipunan",
+    "Filipino"
 ]
 
 clean_df = df.copy()
@@ -149,11 +173,287 @@ def generate_cluster_label(row):
 
         return "MIXED-PERFORMANCE"
 
+
+# =====================================================
+# =====================================================
+# PART 1: CORRELATION ANALYSIS
+# =====================================================
+# =====================================================
+
+st.header("📊 Part 1: Subject Correlation Analysis")
+
+st.caption(
+    "Research Question: Are subject performances independent, "
+    "or do weak students struggle across all subjects?"
+)
+
+# --- Compute correlation matrix ---
+corr_matrix = clean_df[subject_columns].corr().round(4)
+
+col_heatmap, col_bars = st.columns([1, 1])
+
+# ── Heatmap ──────────────────────────────────────────
+with col_heatmap:
+
+    st.subheader("Correlation Heatmap")
+
+    fig_heat, ax_heat = plt.subplots(figsize=(7, 5))
+
+    fig_heat.patch.set_facecolor("#1a1f2e")
+    ax_heat.set_facecolor("#1a1f2e")
+
+    # Draw the heatmap manually with imshow
+    cmap = plt.cm.RdYlGn
+    im = ax_heat.imshow(
+        corr_matrix.values,
+        cmap=cmap,
+        vmin=0.55,
+        vmax=1.0,
+        aspect="auto"
+    )
+
+    # Tick labels
+    ax_heat.set_xticks(range(len(subject_labels)))
+    ax_heat.set_yticks(range(len(subject_labels)))
+    short_labels = ["Math", "English", "Science", "AP", "Filipino"]
+    ax_heat.set_xticklabels(short_labels, color="white", fontsize=10)
+    ax_heat.set_yticklabels(short_labels, color="white", fontsize=10)
+    plt.xticks(rotation=30, ha="right")
+
+    # Annotate each cell with the r value
+    for i in range(len(subject_columns)):
+        for j in range(len(subject_columns)):
+            val = corr_matrix.values[i, j]
+            text_color = "black" if val > 0.75 else "white"
+            ax_heat.text(
+                j, i, f"{val:.2f}",
+                ha="center", va="center",
+                fontsize=10, color=text_color, fontweight="bold"
+            )
+
+    cbar = fig_heat.colorbar(im, ax=ax_heat, fraction=0.046, pad=0.04)
+    cbar.ax.yaxis.set_tick_params(color="white")
+    plt.setp(cbar.ax.yaxis.get_ticklabels(), color="white")
+    cbar.set_label("Pearson r", color="white")
+
+    ax_heat.set_title(
+        "Subject Correlation Matrix",
+        color="white", fontsize=12, pad=12
+    )
+    ax_heat.tick_params(colors="white")
+    for spine in ax_heat.spines.values():
+        spine.set_edgecolor("#2e3650")
+
+    fig_heat.tight_layout()
+    st.pyplot(fig_heat)
+
+# ── Pairwise bar chart ────────────────────────────────
+with col_bars:
+
+    st.subheader("Pairwise Correlations")
+
+    pairs = []
+    for i in range(len(subject_columns)):
+        for j in range(i + 1, len(subject_columns)):
+            pairs.append({
+                "Pair": f"{short_labels[i]} ↔ {short_labels[j]}",
+                "r": round(corr_matrix.values[i, j], 4)
+            })
+
+    pairs_df = pd.DataFrame(pairs).sort_values("r", ascending=True)
+
+    fig_bar, ax_bar = plt.subplots(figsize=(7, 5))
+    fig_bar.patch.set_facecolor("#1a1f2e")
+    ax_bar.set_facecolor("#242b3d")
+
+    bar_colors = [
+        "#E24B4A" if r < 0.68
+        else "#EF9F27" if r < 0.73
+        else "#22c55e"
+        for r in pairs_df["r"]
+    ]
+
+    bars = ax_bar.barh(
+        pairs_df["Pair"],
+        pairs_df["r"],
+        color=bar_colors,
+        edgecolor="#0f1117",
+        height=0.6
+    )
+
+    # Labels on bars
+    for bar, r_val in zip(bars, pairs_df["r"]):
+        ax_bar.text(
+            bar.get_width() + 0.002,
+            bar.get_y() + bar.get_height() / 2,
+            f"r = {r_val:.4f}",
+            va="center", ha="left",
+            color="white", fontsize=9
+        )
+
+    ax_bar.set_xlim(0.60, 0.86)
+    ax_bar.set_xlabel("Correlation (r)", color="white")
+    ax_bar.set_title(
+        "All Subject Pair Correlations (sorted)",
+        color="white", fontsize=12, pad=12
+    )
+    ax_bar.tick_params(colors="white")
+    ax_bar.xaxis.label.set_color("white")
+    for spine in ax_bar.spines.values():
+        spine.set_edgecolor("#2e3650")
+    ax_bar.grid(axis="x", alpha=0.2, color="white")
+
+    fig_bar.tight_layout()
+    st.pyplot(fig_bar)
+
+# ── Insight boxes ─────────────────────────────────────
+
+strongest_pair = pairs_df.iloc[-1]
+weakest_pair   = pairs_df.iloc[0]
+avg_r          = pairs_df["r"].mean()
+
+col_i1, col_i2, col_i3 = st.columns(3)
+
+with col_i1:
+    st.markdown(
+        f"""<div class="insight-box">
+        <span class="finding-title">🔗 Strongest Pair</span>
+        <span class="finding-strong">{strongest_pair['Pair']}</span><br>
+        r = <b>{strongest_pair['r']:.4f}</b> — These two subjects move
+        almost in lockstep. Schools strong in one are almost always
+        strong in the other.
+        </div>""",
+        unsafe_allow_html=True
+    )
+
+with col_i2:
+    st.markdown(
+        f"""<div class="insight-box" style="border-color:#f97316">
+        <span class="finding-title" style="color:#f97316">🔗 Weakest Pair</span>
+        <span class="finding-weak">{weakest_pair['Pair']}</span><br>
+        r = <b>{weakest_pair['r']:.4f}</b> — Still a strong positive
+        correlation; the weakest link among all pairs, but far from
+        independent.
+        </div>""",
+        unsafe_allow_html=True
+    )
+
+with col_i3:
+    st.markdown(
+        f"""<div class="insight-box" style="border-color:#22c55e">
+        <span class="finding-title" style="color:#22c55e">📌 Key Takeaway</span>
+        Average r = <b>{avg_r:.3f}</b> across all pairs.<br><br>
+        Subjects are <b>NOT independent</b>. Weak students struggle
+        across <em>all</em> subjects — there is no "safe" subject
+        where they perform well in isolation.
+        </div>""",
+        unsafe_allow_html=True
+    )
+
+# ── Distribution of overall MPS ──────────────────────
+
+st.subheader("Overall MPS Distribution")
+
+col_dist1, col_dist2 = st.columns([2, 1])
+
+with col_dist1:
+
+    fig_dist, ax_dist = plt.subplots(figsize=(10, 4))
+    fig_dist.patch.set_facecolor("#1a1f2e")
+    ax_dist.set_facecolor("#242b3d")
+
+    # Histogram with colored bands
+    ax_dist.axvspan(0,  40,  alpha=0.15, color="#E24B4A")
+    ax_dist.axvspan(40, 55,  alpha=0.15, color="#EF9F27")
+    ax_dist.axvspan(55, 70,  alpha=0.15, color="#378ADD")
+    ax_dist.axvspan(70, 100, alpha=0.15, color="#22c55e")
+
+    ax_dist.hist(
+        clean_df["overall_mps"],
+        bins=40,
+        color="#378ADD",
+        edgecolor="#0f1117",
+        alpha=0.85
+    )
+
+    mean_val = clean_df["overall_mps"].mean()
+    ax_dist.axvline(
+        mean_val, color="#f97316",
+        linewidth=2, linestyle="--",
+        label=f"Mean = {mean_val:.1f}"
+    )
+
+    # Band labels
+    for x, label, color in [
+        (20,  "Critical\n(<40)",  "#E24B4A"),
+        (47,  "Weak\n(40–55)",    "#EF9F27"),
+        (62,  "Average\n(55–70)", "#a0aec0"),
+        (82,  "Strong\n(70+)",    "#22c55e"),
+    ]:
+        ax_dist.text(
+            x, ax_dist.get_ylim()[1] * 0.92 if ax_dist.get_ylim()[1] > 0 else 50,
+            label, ha="center", va="top",
+            color=color, fontsize=9, fontweight="bold"
+        )
+
+    ax_dist.set_xlabel("Overall MPS", color="white")
+    ax_dist.set_ylabel("Number of Schools", color="white")
+    ax_dist.set_title(
+        "Distribution of Overall MPS Across All Schools",
+        color="white", fontsize=12
+    )
+    ax_dist.tick_params(colors="white")
+    ax_dist.legend(
+        facecolor="#1a1f2e", labelcolor="white",
+        edgecolor="#2e3650"
+    )
+    for spine in ax_dist.spines.values():
+        spine.set_edgecolor("#2e3650")
+
+    fig_dist.tight_layout()
+    st.pyplot(fig_dist)
+
+with col_dist2:
+
+    # Band counts
+    bands = [
+        ("Critical (<40)",  (clean_df["overall_mps"] < 40).sum(),          "#E24B4A"),
+        ("Weak (40–55)",    ((clean_df["overall_mps"] >= 40) & (clean_df["overall_mps"] < 55)).sum(), "#EF9F27"),
+        ("Average (55–70)", ((clean_df["overall_mps"] >= 55) & (clean_df["overall_mps"] < 70)).sum(), "#378ADD"),
+        ("Strong (70+)",    (clean_df["overall_mps"] >= 70).sum(),          "#22c55e"),
+    ]
+
+    total = len(clean_df)
+    st.markdown("<br>", unsafe_allow_html=True)
+    for label, count, color in bands:
+        pct = count / total * 100
+        st.markdown(
+            f"""<div style="background:#1a1f2e;border-radius:8px;
+                padding:10px 14px;margin-bottom:8px;
+                border-left:4px solid {color}">
+                <span style="color:{color};font-weight:700">{label}</span><br>
+                <span style="font-size:20px;font-weight:700;color:white">{count:,}</span>
+                <span style="color:#a0aec0;font-size:12px"> schools ({pct:.1f}%)</span>
+            </div>""",
+            unsafe_allow_html=True
+        )
+
+st.divider()
+
+
+# =====================================================
+# =====================================================
+# PART 2: CLUSTERING
+# =====================================================
+# =====================================================
+
+st.header("🔵 Part 2: Clustering Analysis")
+
 # =====================================================
 # CLUSTER VISUALIZATION
 # =====================================================
 
-st.header("Visualization")
+st.subheader("Cluster Scatter Plot")
 
 fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -211,7 +511,7 @@ st.pyplot(fig)
 # CLUSTER SUMMARY
 # =====================================================
 
-st.header("Cluster Summary")
+st.subheader("Cluster Summary")
 
 cluster_summary = (
     clean_df
@@ -243,7 +543,7 @@ st.dataframe(cluster_summary)
 # CLUSTER PROFILES
 # =====================================================
 
-st.header("Cluster Profiles")
+st.subheader("Cluster Profiles")
 
 cluster_profile = (
     clean_df
