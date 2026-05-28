@@ -764,12 +764,24 @@ st.markdown("""
     <span class="section-title-text">At-Risk Prediction Analysis</span>
 </div>
 <div style='font-size:13px;color:#4a6080;margin-bottom:20px;'>
-    Research Question: Can we predict at-risk schools early? Which subject combinations indicate failure risk?
+    Research Question: Can we predict schools with multiple weak subjects? Definition: A school is <b>at-risk</b> if ≥2 subjects score below 45.
 </div>
 """, unsafe_allow_html=True)
 
-at_risk_threshold = 40
-clean_df["at_risk"] = (clean_df["overall_mps"] < at_risk_threshold).astype(int)
+# Define at-risk using a meaningful criterion to avoid data leakage:
+# A school is at-risk if at least 2 subjects score below 45
+# (This doesn't directly use the mean, so the model must learn real patterns)
+def is_at_risk(row):
+    weak_subjects = sum([
+        row["math_mps"] < 45,
+        row["english_mps"] < 45,
+        row["science_mps"] < 45,
+        row["araling_panlipunan_mps"] < 45,
+        row["filipino_mps"] < 45
+    ])
+    return 1 if weak_subjects >= 2 else 0
+
+clean_df["at_risk"] = clean_df[subject_columns].apply(is_at_risk, axis=1)
 
 n_at_risk = clean_df["at_risk"].sum()
 n_total = len(clean_df)
